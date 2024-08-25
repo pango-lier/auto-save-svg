@@ -9,8 +9,8 @@ import { join } from 'path';
 import { Timeout } from '@nestjs/schedule';
 import { UpscaylService } from 'src/upscayl/upscayl.service';
 import { UpscaylModels } from 'src/upscayl/bin/models-list';
-import { Rembg } from 'sharp-remove-bg-ai';
 import { transparentBackground } from 'transparent-background';
+import ImageTracer from 'imagetracerjs';
 
 @Injectable()
 export class ImageService {
@@ -31,18 +31,19 @@ export class ImageService {
     const noBgImagePath = this.getTempFilePath('no-bg.png');
     const svgOutputPath = this.getTempFilePath('output.svg');
 
+    await this.removeBackground(imagePath, noBgImagePath);
+
     // Step 1: Upscale the image by x10 using Upscayl
     await this.upscaylService.upscale({
-      inputPath: imagePath,
+      inputPath: noBgImagePath,
       outputPath: upscaledImagePath,
       model: UpscaylModels.DigitalArtRealesrganX4plusAnime,
     });
 
     // Step 2: Remove the background
-    await this.removeBackground(upscaledImagePath, noBgImagePath);
 
     // Step 3: Convert the image to SVG
-    const svgData = await this.convertToSvg(upscaledImagePath, svgOutputPath);
+   // const svgData = await this.convertToSvg(upscaledImagePath, svgOutputPath);
 
     return svgOutputPath;
   }
@@ -53,18 +54,25 @@ export class ImageService {
   ): Promise<void> {
     console.log('removeBackground');
     const input = await sharp(inputPath).toBuffer();
-    const output = await transparentBackground(input, "png", {
-      // uses a 1024x1024 model by default
-      // enabling fast uses a 384x384 model instead
+    const output = await transparentBackground(input, 'png', {
       fast: false,
     });
-    fs.writeFileSync(outputPath, output);
-
+    console.log(outputPath);
+    await fs.writeFileSync(outputPath, output);
   }
 
   private convertToSvg(inputPath: string, outputPath: string): Promise<string> {
     console.log('convertToSvg');
     return new Promise((resolve, reject) => {
+      ImageTracer.imageToSVG(
+        inputPath /* input filename / URL */,
+
+        function (svgstr) {
+          ImageTracer.appendSVGString(svgstr, 'svgcontainer');
+        } /* callback function to run on SVG string result */,
+
+        'posterized2' /* Option preset */,
+      );
       sharp(inputPath)
         .toBuffer()
         .then((data) => {
