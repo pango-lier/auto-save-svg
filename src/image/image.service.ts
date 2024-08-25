@@ -27,6 +27,10 @@ export class ImageService {
   }
 
   async convertImageToSvg(imagePath: string): Promise<string> {
+    const folder = this.getTempFilePath('');
+    if (!fs.existsSync(folder)) {
+      fs.mkdirSync(folder, { recursive: true });
+    }
     const upscaledImagePath = this.getTempFilePath('upscaled.png');
     const noBgImagePath = this.getTempFilePath('no-bg.png');
     const svgOutputPath = this.getTempFilePath('output.svg');
