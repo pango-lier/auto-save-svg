@@ -1,16 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import * as sharp from 'sharp';
-import * as potrace from 'potrace';
 import * as fs from 'fs-extra';
-import { exec } from 'child_process';
-// import execa = require('execa');
-import * as shell from 'shelljs';
-import { join } from 'path';
 import { Timeout } from '@nestjs/schedule';
 import { UpscaylService } from 'src/upscayl/upscayl.service';
 import { UpscaylModels } from 'src/upscayl/bin/models-list';
 import { transparentBackground } from 'transparent-background';
-import ImageTracer from 'imagetracerjs';
+import * as shell from 'shelljs';
 
 @Injectable()
 export class ImageService {
@@ -20,80 +15,115 @@ export class ImageService {
   async test() {
     console.log('test');
     try {
-      await this.convertImageToSvg('test.jpg');
+      const folderPath = '/home/trong/Desktop/designs';
+      const folders = await this.listFolder(folderPath);
+      for await (const folder of folders) {
+        console.log(folder);
+        await this.convertImageToSvg(`${folderPath}/${folder}`);
+      }
     } catch (error) {
       console.error(error.message);
     }
   }
 
-  async convertImageToSvg(imagePath: string): Promise<string> {
-    const folder = this.getTempFilePath('');
-    if (!fs.existsSync(folder)) {
-      fs.mkdirSync(folder, { recursive: true });
+  async convertImageToSvg(designFolderPath: string): Promise<any> {
+    const noBgFolder = `${designFolderPath}/noBg`;
+    if (!fs.existsSync(noBgFolder)) {
+      fs.mkdirSync(noBgFolder, { recursive: true });
     }
-    const upscaledImagePath = this.getTempFilePath('upscaled.png');
-    const noBgImagePath = this.getTempFilePath('no-bg.png');
-    const svgOutputPath = this.getTempFilePath('output.svg');
+    const upScaleFolder = `${designFolderPath}/upScale`;
+    if (!fs.existsSync(upScaleFolder)) {
+      fs.mkdirSync(upScaleFolder, { recursive: true });
+    }
+    const originFolder = `${designFolderPath}/origin`;
+    if (!fs.existsSync(originFolder)) {
+      fs.mkdirSync(originFolder, { recursive: true });
+    }
 
-    await this.removeBackground(imagePath, noBgImagePath);
+    const previewFolder = `${designFolderPath}/preview`;
+    if (!fs.existsSync(previewFolder)) {
+      fs.mkdirSync(previewFolder, { recursive: true });
+    }
 
-    // Step 1: Upscale the image by x10 using Upscayl
-    await this.upscaylService.upscale({
-      inputPath: noBgImagePath,
-      outputPath: upscaledImagePath,
-      model: UpscaylModels.DigitalArtRealesrganX4plusAnime,
-    });
+    const designs = await this.listImageFiles(designFolderPath);
+    for await (const design of designs) {
+      await this.removeBackground(
+        `${designFolderPath}/${design}`,
+        `${noBgFolder}/${design}`,
+      );
+      // Step 1: Upscale the image by x10 using Upscayl
 
-    // Step 2: Remove the background
+      const upscaleName = this.renameExt(design);
+      await this.upscaylService.upscale({
+        inputPath: `${noBgFolder}/${design}`,
+        outputPath: `${upScaleFolder}/${upscaleName}`,
+        model: UpscaylModels.DigitalArtRealesrganX4plusAnime,
+        width: 640,
+      });
+      await sharp(`${upScaleFolder}/${upscaleName}`)
+        .flatten({ background: { r: 255, g: 255, b: 255 } })
+        .jpeg({ quality: 85 }) // Set quality (0-100), default is 80
+        .toFile(`${previewFolder}/${this.renameExt(design, 'jpg')}`);
+      if (
+        shell.mv(`${designFolderPath}/${design}`, `${originFolder}`).code !== 0
+      ) {
+        console.error('Error moving the file');
+      } else {
+        console.log(`File moved to ${originFolder}`);
+      }
+    }
+  }
 
-    // Step 3: Convert the image to SVG
-   // const svgData = await this.convertToSvg(upscaledImagePath, svgOutputPath);
-
-    return svgOutputPath;
+  renameExt(fileName: string, extChange = 'png') {
+    const arrDesign = fileName.split('.');
+    arrDesign[arrDesign.length - 1] = extChange;
+    return arrDesign.join('.');
   }
 
   private async removeBackground(
     inputPath: string,
     outputPath: string,
   ): Promise<void> {
-    console.log('removeBackground');
+    console.warn(`Start removeBackground: ${inputPath}`);
     const input = await sharp(inputPath).toBuffer();
     const output = await transparentBackground(input, 'png', {
       fast: false,
     });
-    console.log(outputPath);
     await fs.writeFileSync(outputPath, output);
+    console.warn(`End removeBackground: ${outputPath}`);
   }
 
-  private convertToSvg(inputPath: string, outputPath: string): Promise<string> {
-    console.log('convertToSvg');
-    return new Promise((resolve, reject) => {
-      ImageTracer.imageToSVG(
-        inputPath /* input filename / URL */,
+  async listImageFiles(folderPath: string = '/home/trong/Desktop/designs') {
+    try {
+      // Read the directory
+      const files = await fs.readdir(folderPath, { withFileTypes: true });
+      // Define the image file extensions you want to filter by
+      const imageExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
+      // Filter the files by their extension
+      const imageFiles = files.filter((file) => {
+        const fileAr = file.name.split('.');
+        return imageExtensions.includes(
+          `.${fileAr[fileAr.length - 1]}`.toLocaleLowerCase(),
+        );
+      });
 
-        function (svgstr) {
-          ImageTracer.appendSVGString(svgstr, 'svgcontainer');
-        } /* callback function to run on SVG string result */,
-
-        'posterized2' /* Option preset */,
-      );
-      sharp(inputPath)
-        .toBuffer()
-        .then((data) => {
-          potrace.trace(data, (err, svg) => {
-            if (err) {
-              reject(`SVG conversion failed: ${err.message}`);
-            } else {
-              fs.writeFileSync(outputPath, svg);
-              resolve(svg);
-            }
-          });
-        })
-        .catch((err) => reject(`Sharp processing failed: ${err.message}`));
-    });
+      imageFiles.forEach((file) => console.log(file));
+      return imageFiles.map((file) => `${file.name}`);
+    } catch (err) {
+      console.error('Error reading the directory:', err);
+    }
+    return [];
   }
 
-  private getTempFilePath(fileName: string): string {
-    return join(__dirname, '..', 'temp', fileName);
+  async listFolder(folderPath: string = '/home/trong/Desktop/designs') {
+    try {
+      const files = await fs.readdir(folderPath, { withFileTypes: true });
+      const folders = files.filter((file) => file.isDirectory());
+      folders.forEach((file) => console.log(file));
+      return folders.map((folder) => `${folder.name}`);
+    } catch (err) {
+      console.error('Error reading the directory:', err);
+    }
+    return [];
   }
 }
