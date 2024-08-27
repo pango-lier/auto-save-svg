@@ -106,8 +106,6 @@ export class ImageService {
           `.${fileAr[fileAr.length - 1]}`.toLocaleLowerCase(),
         );
       });
-
-      imageFiles.forEach((file) => console.log(file));
       return imageFiles.map((file) => `${file.name}`);
     } catch (err) {
       console.error('Error reading the directory:', err);
@@ -119,7 +117,6 @@ export class ImageService {
     try {
       const files = await fs.readdir(folderPath, { withFileTypes: true });
       const folders = files.filter((file) => file.isDirectory());
-      folders.forEach((file) => console.log(file));
       return folders.map((folder) => `${folder.name}`);
     } catch (err) {
       console.error('Error reading the directory:', err);
