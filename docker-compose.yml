@@ -1,0 +1,18 @@
+version: '3'
+
+services:
+  nestjs-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3008:3000"
+    volumes:
+      - .:/usr/src/app
+      - /usr/src/app/node_modules
+      - ${DESIGN_PATH}:${DESIGN_PATH}
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+    command: yarn run start:debug

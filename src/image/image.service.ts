@@ -18,7 +18,6 @@ export class ImageService {
       const folderPath = '/home/trong/Desktop/designs';
       const folders = await this.listFolder(folderPath);
       for await (const folder of folders) {
-        console.log(folder);
         await this.convertImageToSvg(`${folderPath}/${folder}`);
       }
     } catch (error) {
@@ -62,7 +61,7 @@ export class ImageService {
       });
       await sharp(`${upScaleFolder}/${upscaleName}`)
         .flatten({ background: { r: 255, g: 255, b: 255 } })
-        .jpeg({ quality: 85 }) // Set quality (0-100), default is 80
+        .jpeg({ quality: 90 }) // Set quality (0-100), default is 80
         .toFile(`${previewFolder}/${this.renameExt(design, 'jpg')}`);
       if (
         shell.mv(`${designFolderPath}/${design}`, `${originFolder}`).code !== 0
@@ -89,6 +88,7 @@ export class ImageService {
     const output = await transparentBackground(input, 'png', {
       fast: false,
     });
+
     await fs.writeFileSync(outputPath, output);
     console.warn(`End removeBackground: ${outputPath}`);
   }
