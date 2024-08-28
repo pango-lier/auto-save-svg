@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import * as sharp from 'sharp';
 import * as fs from 'fs-extra';
-import { Timeout } from '@nestjs/schedule';
+import { Interval, Timeout } from '@nestjs/schedule';
 import { UpscaylService } from 'src/upscayl/upscayl.service';
 import { UpscaylModels } from 'src/upscayl/bin/models-list';
 import { transparentBackground } from 'transparent-background';
@@ -14,6 +14,11 @@ export class ImageService {
   @Timeout(1)
   async test() {
     console.log('test');
+  }
+
+  @Interval(10000)
+  async runProcessDesigns() {
+    console.log('runProcessDesigns ');
     try {
       const folderPath = '/home/trong/Desktop/designs';
       const folders = await this.listFolder(folderPath);
