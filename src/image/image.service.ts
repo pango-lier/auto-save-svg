@@ -45,8 +45,8 @@ export class ImageService {
     }
 
     const tempFolder = `${designFolderPath}/temp`;
-    if (!fs.existsSync(upScaleFolder)) {
-      fs.mkdirSync(upScaleFolder, { recursive: true });
+    if (!fs.existsSync(tempFolder)) {
+      fs.mkdirSync(tempFolder, { recursive: true });
     }
 
     const previewFolder = `${designFolderPath}/preview`;
@@ -57,10 +57,8 @@ export class ImageService {
     const designs = await this.listImageFiles(designFolderPath);
     for await (const design of designs) {
       if (
-        shell.mv(`${designFolderPath}/${design}`, `${tempFolder}`).code !== 0
+        shell.mv(`${designFolderPath}/${design}`, `${tempFolder}`).code === 0
       ) {
-        console.error('Error moving the file');
-
         await this.removeBackground(
           `${tempFolder}/${design}`,
           `${noBgFolder}/${design}`,
@@ -78,13 +76,13 @@ export class ImageService {
           .flatten({ background: { r: 255, g: 255, b: 255 } })
           .jpeg({ quality: 90 }) // Set quality (0-100), default is 80
           .toFile(`${previewFolder}/${this.renameExt(design, 'jpg')}`);
-        if (shell.mv(`${tempFolder}/${design}`, `${originFolder}`).code !== 0) {
-          console.error('Error moving the file');
-        } else {
+        if (shell.mv(`${tempFolder}/${design}`, `${originFolder}`).code === 0) {
           console.log(`File moved to ${originFolder}`);
+        } else {
+          console.error('Error moving the file');
         }
       } else {
-        console.log(`File moved to ${originFolder}`);
+        console.error('Error moving the file');
       }
     }
   }
