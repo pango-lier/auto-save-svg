@@ -44,6 +44,11 @@ export class ImageService {
       fs.mkdirSync(originFolder, { recursive: true });
     }
 
+    const tempFolder = `${designFolderPath}/temp`;
+    if (!fs.existsSync(upScaleFolder)) {
+      fs.mkdirSync(upScaleFolder, { recursive: true });
+    }
+
     const previewFolder = `${designFolderPath}/preview`;
     if (!fs.existsSync(previewFolder)) {
       fs.mkdirSync(previewFolder, { recursive: true });
@@ -51,27 +56,33 @@ export class ImageService {
 
     const designs = await this.listImageFiles(designFolderPath);
     for await (const design of designs) {
-      await this.removeBackground(
-        `${designFolderPath}/${design}`,
-        `${noBgFolder}/${design}`,
-      );
-      // Step 1: Upscale the image by x10 using Upscayl
-
-      const upscaleName = this.renameExt(design);
-      await this.upscaylService.upscale({
-        inputPath: `${noBgFolder}/${design}`,
-        outputPath: `${upScaleFolder}/${upscaleName}`,
-        model: UpscaylModels.DigitalArtRealesrganX4plusAnime,
-        width: 640,
-      });
-      await sharp(`${upScaleFolder}/${upscaleName}`)
-        .flatten({ background: { r: 255, g: 255, b: 255 } })
-        .jpeg({ quality: 90 }) // Set quality (0-100), default is 80
-        .toFile(`${previewFolder}/${this.renameExt(design, 'jpg')}`);
       if (
-        shell.mv(`${designFolderPath}/${design}`, `${originFolder}`).code !== 0
+        shell.mv(`${designFolderPath}/${design}`, `${tempFolder}`).code !== 0
       ) {
         console.error('Error moving the file');
+
+        await this.removeBackground(
+          `${tempFolder}/${design}`,
+          `${noBgFolder}/${design}`,
+        );
+        // Step 1: Upscale the image by x10 using Upscayl
+
+        const upscaleName = this.renameExt(design);
+        await this.upscaylService.upscale({
+          inputPath: `${noBgFolder}/${design}`,
+          outputPath: `${upScaleFolder}/${upscaleName}`,
+          model: UpscaylModels.DigitalArtRealesrganX4plusAnime,
+          width: 640,
+        });
+        await sharp(`${upScaleFolder}/${upscaleName}`)
+          .flatten({ background: { r: 255, g: 255, b: 255 } })
+          .jpeg({ quality: 90 }) // Set quality (0-100), default is 80
+          .toFile(`${previewFolder}/${this.renameExt(design, 'jpg')}`);
+        if (shell.mv(`${tempFolder}/${design}`, `${originFolder}`).code !== 0) {
+          console.error('Error moving the file');
+        } else {
+          console.log(`File moved to ${originFolder}`);
+        }
       } else {
         console.log(`File moved to ${originFolder}`);
       }
