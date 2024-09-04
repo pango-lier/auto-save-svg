@@ -62,28 +62,34 @@ export class ImageService {
         console.error('Error moving the file');
       }
     }
-    for await (const design of designs) {
-      await this.removeBackground(
-        `${tempFolder}/${design}`,
-        `${noBgFolder}/${design}`,
-      );
-      // Step 1: Upscale the image by x10 using Upscayl
 
-      const upscaleName = this.renameExt(design);
-      await this.upscaylService.upscale({
-        inputPath: `${noBgFolder}/${design}`,
-        outputPath: `${upScaleFolder}/${upscaleName}`,
-        model: UpscaylModels.DigitalArtRealesrganX4plusAnime,
-        width: 640,
-      });
-      await sharp(`${upScaleFolder}/${upscaleName}`)
-        .flatten({ background: { r: 255, g: 255, b: 255 } })
-        .jpeg({ quality: 90 }) // Set quality (0-100), default is 80
-        .toFile(`${previewFolder}/${this.renameExt(design, 'jpg')}`);
-      if (shell.mv(`${tempFolder}/${design}`, `${originFolder}`).code === 0) {
-        console.log(`File moved to ${originFolder}`);
-      } else {
-        console.error('Error moving the file');
+    const designsMoved = await this.listImageFiles(tempFolder);
+    for await (const design of designsMoved) {
+      try {
+        await this.removeBackground(
+          `${tempFolder}/${design}`,
+          `${noBgFolder}/${design}`,
+        );
+        // Step 1: Upscale the image by x10 using Upscayl
+
+        const upscaleName = this.renameExt(design);
+        await this.upscaylService.upscale({
+          inputPath: `${noBgFolder}/${design}`,
+          outputPath: `${upScaleFolder}/${upscaleName}`,
+          model: UpscaylModels.DigitalArtRealesrganX4plusAnime,
+          width: 640,
+        });
+        await sharp(`${upScaleFolder}/${upscaleName}`)
+          .flatten({ background: { r: 255, g: 255, b: 255 } })
+          .jpeg({ quality: 90 }) // Set quality (0-100), default is 80
+          .toFile(`${previewFolder}/${this.renameExt(design, 'jpg')}`);
+        if (shell.mv(`${tempFolder}/${design}`, `${originFolder}`).code === 0) {
+          console.log(`File moved to ${originFolder}`);
+        } else {
+          console.error('Error moving the file');
+        }
+      } catch (e) {
+        console.error(`${e?.message}`);
       }
     }
   }
