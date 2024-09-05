@@ -54,24 +54,30 @@ export class ImageService {
       fs.mkdirSync(previewFolder, { recursive: true });
     }
 
-    const designs = await this.listImageFiles(designFolderPath);
-    for await (const design of designs) {
-      if (
-        shell.mv(`${designFolderPath}/${design}`, `${tempFolder}`).code !== 0
-      ) {
-        console.error('Error moving the file');
+    // const designs = await this.listImageFiles(designFolderPath);
+    // for await (const design of designs) {
+    //   if (
+    //     shell.mv(`${designFolderPath}/${design}`, `${tempFolder}`).code !== 0
+    //   ) {
+    //     console.error('Error moving the file');
+    //   }
+    // }
+
+    const noBgDesigns = await this.listImageFiles(tempFolder);
+    for await (const noBgDesign of noBgDesigns) {
+      try {
+        await this.removeBackground(
+          `${tempFolder}/${noBgDesign}`,
+          `${noBgFolder}/${noBgDesign}`,
+        );
+      } catch (e) {
+        console.error(`removeBackground : ${e?.message}`);
       }
     }
 
-    const designsMoved = await this.listImageFiles(tempFolder);
-    for await (const design of designsMoved) {
+    const upScaleDesigns = await this.listImageFiles(tempFolder);
+    for await (const design of upScaleDesigns) {
       try {
-        await this.removeBackground(
-          `${tempFolder}/${design}`,
-          `${noBgFolder}/${design}`,
-        );
-        // Step 1: Upscale the image by x10 using Upscayl
-
         const upscaleName = this.renameExt(design);
         await this.upscaylService.upscale({
           inputPath: `${noBgFolder}/${design}`,
@@ -89,7 +95,7 @@ export class ImageService {
           console.error('Error moving the file');
         }
       } catch (e) {
-        console.error(`${e?.message}`);
+        console.error(`upscale : ${e?.message}`);
       }
     }
   }
