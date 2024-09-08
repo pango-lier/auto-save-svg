@@ -75,7 +75,7 @@ export class ImageService {
       }
     }
 
-    const upScaleDesigns = await this.listImageFiles(tempFolder);
+    const upScaleDesigns = await this.listImageFiles(noBgFolder);
     for await (const design of upScaleDesigns) {
       try {
         const upscaleName = this.renameExt(design);
@@ -89,7 +89,14 @@ export class ImageService {
           .flatten({ background: { r: 255, g: 255, b: 255 } })
           .jpeg({ quality: 90 }) // Set quality (0-100), default is 80
           .toFile(`${previewFolder}/${this.renameExt(design, 'jpg')}`);
-        if (shell.mv(`${tempFolder}/${design}`, `${originFolder}`).code === 0) {
+
+        let originDesign = noBgFolder;
+        if (fs.existsSync(`${tempFolder}/${design}`)) {
+          originDesign = tempFolder;
+        }
+        if (
+          shell.mv(`${originDesign}/${design}`, `${originFolder}`).code === 0
+        ) {
           console.log(`File moved to ${originFolder}`);
         } else {
           console.error('Error moving the file');
