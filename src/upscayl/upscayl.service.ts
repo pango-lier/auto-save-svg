@@ -51,13 +51,17 @@ export class UpscaylService {
         command = `${command} -t ${options.tileSize}`;
       }
       console.warn(command);
-      const { stdout } = shell.exec(command, (error: any) => {
-        if (error) {
-          reject(`Upscale failed: ${error?.message}`);
-        } else {
-          resolve(stdout);
-        }
-      });
+      const { stdout } = shell.exec(
+        command,
+        { silent: true, async: true },
+        (error: any) => {
+          if (error) {
+            reject(`Upscale failed: ${error?.message}`);
+          } else {
+            resolve(stdout);
+          }
+        },
+      );
     });
   }
 }

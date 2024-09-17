@@ -16,15 +16,19 @@ export class ImageService {
     console.log('test');
   }
 
-  @Interval(10000)
+  // @Timeout(500)
   async runProcessDesigns() {
     console.log('runProcessDesigns ');
     try {
       const folderPath = '/home/trong/Desktop/designs';
-      const folders = await this.listFolder(folderPath);
-      for await (const folder of folders) {
-        await this.convertImageToSvg(`${folderPath}/${folder}`);
-      }
+      // const folders = await this.listFolder(folderPath);
+      // const a='pngtree-vector-lovely-valentine-s-day-christmas-elf-png-image_4064412.png';
+      // const f = `/home/trong/Desktop/designs/christmas-elf/upScale/${a}`;
+      // await this.removeBackground(f, f);
+      // for await (const folder of folders) {
+      //   // await this.convertImageToSvg(`${folderPath}/${folder}`);
+      //  // await this.convertImageToWebp(`${folderPath}/${folder}`);
+      // }
     } catch (error) {
       console.error(error.message);
     }
@@ -101,6 +105,28 @@ export class ImageService {
         } else {
           console.error('Error moving the file');
         }
+      } catch (e) {
+        console.error(`upscale : ${e?.message}`);
+      }
+    }
+  }
+
+  async convertImageToWebp(designFolderPath: string): Promise<any> {
+    const webpFolder = `${designFolderPath}/webp`;
+    if (!fs.existsSync(webpFolder)) {
+      fs.mkdirSync(webpFolder, { recursive: true });
+    }
+    const upScaleFolder = `${designFolderPath}/upScale`;
+    if (!fs.existsSync(upScaleFolder)) {
+      fs.mkdirSync(upScaleFolder, { recursive: true });
+    }
+
+    const upScaleDesigns = await this.listImageFiles(upScaleFolder);
+    for await (const design of upScaleDesigns) {
+      try {
+        await sharp(`${upScaleFolder}/${design}`)
+          .webp({ quality: 100 })
+          .toFile(`${webpFolder}/${this.renameExt(design, 'upScaleWebp')}`);
       } catch (e) {
         console.error(`upscale : ${e?.message}`);
       }
