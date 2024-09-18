@@ -21,17 +21,36 @@ export class ImageService {
     console.log('runProcessDesigns ');
     try {
       const folderPath = '/home/trong/Desktop/designs';
-      // const folders = await this.listFolder(folderPath);
-      // const a='pngtree-vector-lovely-valentine-s-day-christmas-elf-png-image_4064412.png';
-      // const f = `/home/trong/Desktop/designs/christmas-elf/upScale/${a}`;
-      // await this.removeBackground(f, f);
-      // for await (const folder of folders) {
-      //   // await this.convertImageToSvg(`${folderPath}/${folder}`);
-      //  // await this.convertImageToWebp(`${folderPath}/${folder}`);
-      // }
+      const folders = await this.listFolder(folderPath);
+      for await (const folder of folders) {
+        // await this.convertImageToSvg(`${folderPath}/${folder}`);
+        await this.convertImageToWebp(`${folderPath}/${folder}`);
+      }
     } catch (error) {
       console.error(error.message);
     }
+  }
+
+  // @Timeout(500)
+  async removeBgFolder() {
+    console.log('runProcessDesigns ');
+    try {
+      const f = `/home/trong/Desktop/designs/christmas-truck/upScale`;
+      const noBgDesigns = await this.listImageFiles(`${f}/nobg`);
+      for await (const noBgDesign of noBgDesigns) {
+        try {
+          await this.removeBackground(
+            `${f}/nobg/${noBgDesign}`,
+            `${f}/${noBgDesign}`,
+          );
+        } catch (e) {
+          console.error(`removeBackground : ${e?.message}`);
+        }
+      }
+    } catch (error) {
+      console.error(error.message);
+    }
+    console.log('--------clean---bg-done');
   }
 
   async convertImageToSvg(designFolderPath: string): Promise<any> {
@@ -112,7 +131,7 @@ export class ImageService {
   }
 
   async convertImageToWebp(designFolderPath: string): Promise<any> {
-    const webpFolder = `${designFolderPath}/webp`;
+    const webpFolder = `${designFolderPath}/webp2`;
     if (!fs.existsSync(webpFolder)) {
       fs.mkdirSync(webpFolder, { recursive: true });
     }
@@ -126,7 +145,7 @@ export class ImageService {
       try {
         await sharp(`${upScaleFolder}/${design}`)
           .webp({ quality: 100 })
-          .toFile(`${webpFolder}/${this.renameExt(design, 'upScaleWebp')}`);
+          .toFile(`${webpFolder}/${this.renameExt(design, 'webp')}`);
       } catch (e) {
         console.error(`upscale : ${e?.message}`);
       }
